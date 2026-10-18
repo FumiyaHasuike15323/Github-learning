@@ -161,6 +161,7 @@ details[open] summary{margin-bottom:6px}
 
 /* ---- help ---- */
 .search{margin:8px 0 12px}
+.card[id^=g-]{scroll-margin-top:120px}
 .gl dt{font-weight:800;margin-top:12px}.gl dd{margin:2px 0 0;color:var(--sub)}
 .faq details{background:var(--panel)}
 .tpl{margin:10px 0}

@@ -42,9 +42,18 @@
 
   function hud() {
     var lv = VQ.level();
-    document.getElementById('hud').innerHTML = '<span class="pill" title="レベル">Lv.' + lv.n + ' ' + lv.title + '</span><span class="pill" title="経験値">⭐ ' + VQ.totalXp() + ' / ' + VQ.maxXp() + '</span><a class="pill" href="#/help">❓ ヘルプ</a><a class="pill" href="#/share">📤 進捗</a>';
+    document.getElementById('hud').innerHTML = '<span class="pill" title="レベル">Lv.' + lv.n + ' ' + lv.title + '</span><span class="pill" title="経験値">⭐ ' + VQ.totalXp() + ' / ' + VQ.maxXp() + '</span><a class="pill" href="#/guide">📖 ガイド</a><a class="pill" href="#/help">❓ ヘルプ</a><a class="pill" href="#/share">📤 進捗</a>';
   }
   function nextTodo() { return VQ.allSteps().filter(function (x) { return !S().done[x.step.id] && VQ.unlocked(x.si); })[0]; }
+
+  // ---------- 報告・保存のお知らせ ----------
+  function reminder(doneN) {
+    var s = S(), since = doneN - (s.sent ? s.sent.n : 0), msg = '';
+    if (!s.sent && doneN >= 3) msg = 'まだ先生に進捗を送っていません。<b>ステージをクリアしたら</b>、こまめに送りましょう。';
+    else if (s.sent && since >= 5) msg = '前回の報告から <b>' + since + ' ステップ</b>進みました。先生に進捗を送りましょう。';
+    if (!msg) return '';
+    return '<div class="note"><b>📤 進捗の報告</b><br>' + msg + '<div class="row" style="margin-top:8px"><a class="btn sm" href="#/share">進捗を送る</a><a href="#/guide">報告・保存について →</a></div><div class="count" style="margin-top:6px">※ 進捗はこのブラウザに保存されています。端末を変える前・長く空く前は「引っ越しコード」を控えてください。</div></div>';
+  }
 
   // ---------- ホーム ----------
   function home() {
@@ -56,6 +65,7 @@
     h += '</section>';
     h += '<div class="card"><div class="row" style="margin:0"><b>' + (doneN ? 'ここまでの進み具合' : '全体のボリューム') + '</b><span class="count">' + doneN + ' / ' + all.length + ' ステップ' + (clear ? '' : ' ・ 残り約' + Math.ceil(left / 10) * 10 + '分') + '</span></div><div class="bar' + (clear ? ' ok' : '') + '"><i style="width:' + Math.round(doneN / all.length * 100) + '%"></i></div>' +
       (doneN === 0 ? '<p class="lead" style="margin:10px 0 0">ぜんぶで約' + Math.round(left / 60 * 10) / 10 + '時間。<b>1回15〜30分ずつ</b>、途中で止めてもOK。進捗はこのブラウザに自動で保存されます。</p>' : '') + '</div>';
+    h += reminder(doneN);
     h += '<h2>冒険マップ</h2><ol class="road">';
     var curSi = next ? next.si : -1;
     C.stages.forEach(function (st, si) {
@@ -65,7 +75,7 @@
         '<div class="m"><span>⏱ 約' + VQ.stageMinutes(st) + '分</span><span>📚 ' + p.done + '/' + p.total + ' ステップ</span></div><div class="bar' + (p.clear ? ' ok' : '') + '"><i style="width:' + Math.round(p.done / p.total * 100) + '%"></i></div></a></li>';
     });
     h += '</ol><h2>バッジ</h2><div class="shelf">' + C.stages.map(function (st) { var on = VQ.stageProgress(st).clear; return '<div class="medal' + (on ? '' : ' off') + '"><i>' + st.badge.emoji + '</i>' + st.badge.name + '</div>'; }).join('') + '</div>';
-    h += '<h2>困ったときは</h2><div class="quick"><a href="#/help">❓ ヘルプ<span>用語集・つまずき解決・AIへの伝え方テンプレ</span></a><a href="#/share">📤 進捗を先生に送る<span>別の端末で続ける「引っ越しコード」も</span></a></div>';
+    h += '<h2>困ったときは</h2><div class="quick"><a href="#/guide">📖 使い方ガイド<span>進め方・進捗の保存と報告のしかた</span></a><a href="#/help">❓ ヘルプ<span>用語集・つまずき解決・AIへの伝え方テンプレ</span></a><a href="#/share">📤 進捗を先生に送る<span>別の端末で続ける「引っ越しコード」も</span></a></div>';
     h += '<div class="note ok" style="margin-top:18px"><b>🔐 約束:</b> このゲームはAPIキーやパスワードを入力させません。ミッションで扱う秘密の情報は、あなたの手元だけで管理します。</div>';
     $app.innerHTML = h;
     $app.querySelectorAll('[data-locked]').forEach(function (a) { a.onclick = function (e) { e.preventDefault(); VQ.toast('🔒 前のステージをクリアすると開きます'); }; });
@@ -129,6 +139,16 @@
     draw(''); document.getElementById('q').oninput = function (e) { draw(e.target.value); };
   }
 
+  // ---------- 使い方ガイド ----------
+  function guide() {
+    var G = VQ_HELP.guide;
+    $app.innerHTML = '<div class="crumb"><a href="#/">← 冒険マップ</a></div><h1>📖 使い方ガイド</h1><p class="lead">はじめての方はここを読んでください(3分)。特に<b>「進捗の保存」</b>と<b>「進捗を先生に報告」</b>は大事です。</p>' +
+      '<div class="card noprint"><b>目次</b><ol class="can">' + G.map(function (g) { return '<li><a href="#/guide" data-to="g-' + g.id + '">' + g.h + '</a></li>'; }).join('') + '</ol></div>' +
+      G.map(function (g) { return '<section class="card" id="g-' + g.id + '"><h2 class="ch">' + g.h + '</h2><div class="body">' + g.b + '</div></section>'; }).join('') +
+      '<div class="row noprint"><button class="btn ghost" onclick="print()">🖨 印刷 / PDFで保存</button><a class="btn" href="#/share">📤 進捗ページへ</a></div>';
+    $app.querySelectorAll('[data-to]').forEach(function (a) { a.onclick = function (e) { e.preventDefault(); document.getElementById(a.dataset.to).scrollIntoView({ behavior: 'smooth' }); }; });
+  }
+
   // ---------- 進捗の共有・修了証 ----------
   function issueUrl() {
     var r = VQ.report(), s = S(), cfg = window.VQ_CONFIG;
@@ -139,7 +159,7 @@
   }
   function share() {
     var s = S(), r = VQ.report(), cfg = window.VQ_CONFIG, all = VQ.allSteps().every(function (x) { return s.done[x.step.id]; });
-    var h = '<div class="crumb"><a href="#/">← 冒険マップ</a></div><h1>📤 進捗の共有</h1><p class="lead">ここまでの進捗を先生(このリポジトリの管理者)に送れます。サーバー不要・無料で、GitHubのIssueとして届きます。</p>';
+    var h = '<div class="crumb"><a href="#/">← 冒険マップ</a></div><h1>📤 進捗の共有</h1><p class="lead">ここまでの進捗を先生(このリポジトリの管理者)に送れます。サーバー不要・無料で、GitHubのIssueとして届きます。(くわしくは <a href="#/guide">📖 使い方ガイド</a>)</p>' + (s.sent ? '<div class="note ok">前回の報告: ' + new Date(s.sent.at).toLocaleString('ja-JP') + '(' + s.sent.n + ' ステップ時点)</div>' : '');
     if (all) h += '<div class="cert"><div style="font-size:56px">🎓</div><h2>修了証</h2><p>バイブコーダー・クエストの全ステージを修了しました</p><div class="who">' + esc(s.name || 'あなた') + '</div><p class="count">' + new Date().toLocaleDateString('ja-JP') + '</p><button class="btn noprint" onclick="print()">印刷 / PDFで保存</button></div>';
     h += '<div class="card"><label class="f" for="nm">ニックネーム(送信に必須)</label><input type="text" id="nm" value="' + esc(s.name) + '" maxlength="30" placeholder="例: たろう">' +
       '<label class="f" for="gh">GitHubユーザー名(ミッションの自動確認で使います)</label><input type="text" id="gh" value="' + esc(s.gh) + '" maxlength="39" autocapitalize="off"></div>' +
@@ -153,6 +173,7 @@
     gh.oninput = function () { s.gh = gh.value.trim(); VQ.save(); };
     $app.querySelector('#send').onclick = function () {
       if (!s.name) { VQ.toast('ニックネームを入力してね'); nm.focus(); return; }
+      s.sent = { at: new Date().toISOString(), n: VQ.allSteps().filter(function (x) { return s.done[x.step.id]; }).length }; VQ.save();
       window.open(issueUrl(), '_blank', 'noopener');
     };
     $app.querySelector('#exp').onclick = function () { var c = $app.querySelector('#code'); c.value = VQ.exportCode(); c.select(); };
@@ -170,6 +191,7 @@
     else if (p[0] === 's' && p[1]) stagePage(+p[1] - 1);
     else if (p[0] === 'share') share();
     else if (p[0] === 'help') help();
+    else if (p[0] === 'guide') guide();
     else home();
     hud(); window.scrollTo(0, 0); $app.focus({ preventScroll: true });
   }
