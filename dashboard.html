@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>先生用ダッシュボード</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%A7%AD%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="topbar"><a class="logo" href="./">🧭 バイブコーダー・クエスト</a><div class="hud"><span class="pill">先生用ダッシュボード</span></div></header>
+<main class="container" style="max-width:1100px">
+  <h1>学習者の進捗</h1>
+  <p class="lead">学習者が「進捗を送る」で作った GitHub Issue を読み取って一覧にします。サーバー不要・無料です。(<span id="repo" class="mono"></span>)</p>
+  <div class="row"><button class="btn" id="reload">更新</button><span id="status" class="lead" style="margin:0"></span></div>
+  <div class="card" style="overflow:auto"><table class="t" id="tbl"></table></div>
+  <details><summary>見方</summary>
+    <p><span class="sq v"></span>自動確認で達成　<span class="sq s"></span>自己申告で達成　<span class="sq o"></span>ゲームをクリア　<span class="sq"></span>未達成<br>
+    同じ人が何度も送った場合は、最新の1件だけを表示します(GitHubのユーザー名で判定)。</p>
+    <p>注意: Issueは誰でも書けるので、数字は「本人の申告」です。ミッションの「自動確認」は、学習者のブラウザがGitHubの公開情報で確認した結果を含みます。</p>
+  </details>
+</main>
+<script src="js/config.js"></script>
+<script src="js/content.js"></script>
+<script>
+(function () {
+  var C = VQ_CONTENT, cfg = VQ_CONFIG;
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  $('repo').textContent = cfg.owner + '/' + cfg.repo;
+
+  function parse(issue) {
+    var m = (issue.body || '').match(/<!--\s*VQ-PROGRESS\s*(\{[\s\S]*?\})\s*-->/);
+    if (!m) return null;
+    try { return JSON.parse(m[1]); } catch (e) { return null; }
+  }
+  function load() {
+    $('status').textContent = '読み込み中…';
+    fetch('https://api.github.com/repos/' + cfg.owner + '/' + cfg.repo + '/issues?state=all&per_page=100&sort=created&direction=desc', { headers: { Accept: 'application/vnd.github+json' } })
+      .then(function (r) {
+        if (r.status === 403) throw new Error('GitHub APIの回数制限です。しばらく待って再読み込みしてください。');
+        if (!r.ok) throw new Error('取得できませんでした(' + r.status + ')。リポジトリがPublicか、Issuesが有効か確認してください。');
+        return r.json();
+      })
+      .then(function (issues) {
+        var latest = {};
+        issues.forEach(function (is) {
+          if (is.pull_request) return;
+          var p = parse(is); if (!p) return;
+          var k = is.user.login;
+          if (!latest[k]) latest[k] = { login: k, p: p, at: is.created_at, url: is.html_url };
+        });
+        render(Object.keys(latest).map(function (k) { return latest[k]; }));
+        $('status').textContent = '最終取得: ' + new Date().toLocaleTimeString('ja-JP');
+      })
+      .catch(function (e) { $('status').textContent = '⚠ ' + e.message; });
+  }
+  function render(rows) {
+    var head = '<tr><th>学習者</th><th>Lv / XP</th>' + C.stages.map(function (s, i) { return '<th title="' + esc(s.title) + '">' + s.emoji + (i + 1) + '</th>'; }).join('') + '<th>いまここ</th><th>最終報告</th></tr>';
+    var all = []; C.stages.forEach(function (s) { s.steps.forEach(function (x) { all.push({ s: s, x: x }); }); });
+    var total = all.reduce(function (a, y) { return a + (y.x.xp || (y.x.type === 'mission' ? 50 : 20)); }, 0);
+    rows.sort(function (a, b) { return (b.p.xp || 0) - (a.p.xp || 0); });
+    var body = rows.map(function (r) {
+      var d = r.p.d || {};
+      var cells = C.stages.map(function (s) {
+        return '<td>' + s.steps.map(function (x) { var v = d[x.id]; return '<span class="sq ' + (v === 'v' ? 'v' : v === 's' ? 's' : v ? 'o' : '') + '" title="' + esc(x.title) + '"></span>'; }).join('') + '</td>';
+      }).join('');
+      var cur = all.filter(function (y) { return !d[y.x.id]; })[0];
+      var lv = Math.min(8, Math.floor((r.p.xp || 0) / 100) + 1);
+      return '<tr><td><b>' + esc(r.p.n || '(無記名)') + '</b><br><a href="' + esc(r.url) + '" target="_blank" rel="noopener">@' + esc(r.login) + '</a></td><td>Lv.' + lv + '<br>' + (r.p.xp || 0) + '/' + total + '</td>' + cells +
+        '<td>' + (cur ? esc(cur.s.emoji + ' ' + cur.x.title) : '🎓 修了') + '</td><td>' + new Date(r.at).toLocaleString('ja-JP') + '</td></tr>';
+    }).join('');
+    $('tbl').innerHTML = head + (body || '<tr><td colspan="' + (C.stages.length + 4) + '">まだ報告がありません。</td></tr>');
+  }
+  $('reload').onclick = load;
+  load();
+})();
+</script>
+</body>
+</html>
