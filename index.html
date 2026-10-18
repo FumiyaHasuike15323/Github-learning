@@ -9,18 +9,22 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+<a class="skip" href="#app">本文へ</a>
 <header class="topbar">
   <a class="logo" href="#/">🧭 バイブコーダー・クエスト</a>
-  <div class="hud" id="hud"></div>
+  <nav class="hud" id="hud" aria-label="ステータス"></nav>
 </header>
-<main id="app" class="container"></main>
-<div id="toast" class="toast" role="status" aria-live="polite"></div>
-<footer class="foot">
+<main id="app" class="container" tabindex="-1"></main>
+<footer class="foot noprint">
   <span>コードは書かなくてOK。AIに頼んで、作って、公開して、育てる。</span>
   <a href="dashboard.html">先生用ダッシュボード</a>
 </footer>
+<div id="stepbar" class="stepbar noprint" hidden></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<canvas id="confetti" aria-hidden="true"></canvas>
 <script src="js/config.js"></script>
 <script src="js/content.js"></script>
+<script src="js/help.js"></script>
 <script src="js/state.js"></script>
 <script src="js/verify.js"></script>
 <script src="js/games.js"></script>
