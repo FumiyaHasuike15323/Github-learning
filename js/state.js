@@ -14,7 +14,7 @@
   };
 
   function fresh() {
-    return { v: 1, name: '', gh: '', tool: '', provider: '', repos: { first: 'my-first-app', chat: 'my-ai-chat' }, urls: {}, done: {}, chk: {}, unlockAll: false };
+    return { v: 1, name: '', gh: '', tool: '', provider: '', repos: { first: 'my-first-app', chat: 'my-ai-chat' }, urls: {}, done: {}, chk: {}, sent: null, unlockAll: false };
   }
   function load() {
     try {
